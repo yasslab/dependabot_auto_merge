@@ -96,17 +96,27 @@ runs:
               PR_STATUS=$(gh pr view "$PR_URL" --json statusCheckRollup,mergeable,mergeStateStatus --jq '{checks: .statusCheckRollup, mergeable: .mergeable, state: .mergeStateStatus}')
               
               # Check if all checks have passed
-              CHECKS_STATUS=$(echo "$PR_STATUS" | jq -r '.checks[] | select(.status != "COMPLETED" or .conclusion != "SUCCESS") | .name' | wc -l)
-              MERGEABLE=$(echo   "$PR_STATUS" | jq -r '.mergeable')
+              CHECKS_PENDING=$(echo "$PR_STATUS" | jq -r '[.checks[] | select(.status != "COMPLETED")] | length')
+              CHECKS_FAILED=$(echo "$PR_STATUS" | jq -r '[.checks[] | select(.status == "COMPLETED" and .conclusion != "SUCCESS")] | length')
+              CHECKS_TOTAL=$((CHECKS_PENDING + CHECKS_FAILED))
+              MERGEABLE=$(echo "$PR_STATUS" | jq -r '.mergeable')
               MERGE_STATE=$(echo "$PR_STATUS" | jq -r '.state')
               
               echo "📊 Status check: attempt $i/$MAX_ATTEMPTS"
-              echo "  - Pending/failed checks: $CHECKS_STATUS"
+              echo "  - Pending checks: $CHECKS_PENDING"
+              echo "  - Failed checks: $CHECKS_FAILED"
+              echo "  - Total non-success: $CHECKS_TOTAL"
               echo "  - Mergeable: $MERGEABLE"
               echo "  - Merge state: $MERGE_STATE"
               
+              # Debug: Show check details on first few attempts
+              if [[ $i -le 3 ]]; then
+                echo "  - Check details:"
+                echo "$PR_STATUS" | jq -r '.checks[] | "    - \(.name): \(.status) (\(.conclusion // "pending"))"'
+              fi
+              
               # If all checks passed and PR is mergeable
-              if [[ "$CHECKS_STATUS" -eq 0 && "$MERGEABLE" == "MERGEABLE" ]]; then
+              if [[ "$CHECKS_TOTAL" -eq 0 && "$MERGEABLE" == "MERGEABLE" ]]; then
                 echo "✅ All checks passed! Merging PR..."
                 gh pr merge "$PR_URL" --${{ inputs.merge-method }}
                 echo "🎉 PR successfully merged!"
