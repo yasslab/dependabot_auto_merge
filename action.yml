@@ -1,0 +1,141 @@
+name: 'Dependabot Auto Merge'
+description: 'Automatically approve and merge Dependabot PRs based on update type'
+author: 'YassLab Inc.'
+
+inputs:
+  github-token:
+    description: 'GitHub token with PR write permissions'
+    required: true
+  auto-merge-level:
+    description: 'Maximum semver level to auto-merge (patch, minor, or all)'
+    required: false
+    default: 'minor'
+  merge-method:
+    description: 'Merge method (merge, squash, or rebase)'
+    required: false
+    default: 'squash'
+  exclude-packages:
+    description: 'Comma-separated list of packages to exclude from auto-merge'
+    required: false
+    default: ''
+  dry-run:
+    description: 'If true, only log what would be done without actually merging'
+    required: false
+    default: 'false'
+  wait-for-checks:
+    description: 'Wait for CI checks to pass before merging (true to wait, false to use auto-merge)'
+    required: false
+    default: 'false'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Fetch Dependabot metadata
+      id: metadata
+      uses: dependabot/fetch-metadata@v2
+      with:
+        github-token: ${{ inputs.github-token }}
+
+    - name: Check and auto-merge
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PR_URL: ${{ github.event.pull_request.html_url }}
+      run: |
+        # Check if package is excluded
+        DEPENDENCY_NAMES="${{ steps.metadata.outputs.dependency-names }}"
+        EXCLUDE_PACKAGES="${{ inputs.exclude-packages }}"
+        
+        if [ -n "$EXCLUDE_PACKAGES" ]; then
+          IFS=',' read -ra EXCLUDED <<< "$EXCLUDE_PACKAGES"
+          for pkg in "${EXCLUDED[@]}"; do
+            if [[ "$DEPENDENCY_NAMES" == *"$pkg"* ]]; then
+              echo "📦 Package $pkg is excluded from auto-merge"
+              exit 0
+            fi
+          done
+        fi
+        
+        # Check if should auto-merge based on update type
+        UPDATE_TYPE="${{ steps.metadata.outputs.update-type }}"
+        AUTO_MERGE_LEVEL="${{ inputs.auto-merge-level }}"
+        SHOULD_MERGE="false"
+        
+        case "$AUTO_MERGE_LEVEL" in
+          "patch")
+            [[ "$UPDATE_TYPE" == "version-update:semver-patch" ]] && SHOULD_MERGE="true"
+            ;;
+          "minor")
+            [[ "$UPDATE_TYPE" == "version-update:semver-patch" || \
+               "$UPDATE_TYPE" == "version-update:semver-minor" ]] && SHOULD_MERGE="true"
+            ;;
+          "all")
+            SHOULD_MERGE="true"
+            ;;
+        esac
+        
+        # Log decision
+        echo "📊 Auto-merge decision:"
+        echo "  - Update type: $UPDATE_TYPE"
+        echo "  - Dependency: $DEPENDENCY_NAMES"
+        echo "  - Should merge: $SHOULD_MERGE"
+        echo "  - Dry run: ${{ inputs.dry-run }}"
+        echo "  - Wait for checks: ${{ inputs.wait-for-checks }}"
+        
+        # Execute merge if conditions are met
+        if [[ "$SHOULD_MERGE" == "true" && "${{ inputs.dry-run }}" != "true" ]]; then
+          echo "✅ Approving PR..."
+          gh pr review --approve "$PR_URL"
+          
+          # Check if we should wait for checks or use auto-merge
+          if [[ "${{ inputs.wait-for-checks }}" == "true" ]]; then
+            echo "⏳ Waiting for CI checks to pass before merging..."
+            
+            # Wait up to 60 minutes for checks to complete
+            MAX_ATTEMPTS=120
+            SLEEP_TIME=30
+            
+            for i in $(seq 1 $MAX_ATTEMPTS); do
+              # Get PR status
+              PR_STATUS=$(gh pr view "$PR_URL" --json statusCheckRollup,mergeable,mergeStateStatus --jq '{checks: .statusCheckRollup, mergeable: .mergeable, state: .mergeStateStatus}')
+              
+              # Check if all checks have passed
+              CHECKS_STATUS=$(echo "$PR_STATUS" | jq -r '.checks[] | select(.status != "COMPLETED" or .conclusion != "SUCCESS") | .name' | wc -l)
+              MERGEABLE=$(echo "$PR_STATUS" | jq -r '.mergeable')
+              MERGE_STATE=$(echo "$PR_STATUS" | jq -r '.state')
+              
+              echo "📊 Status check: attempt $i/$MAX_ATTEMPTS"
+              echo "  - Pending/failed checks: $CHECKS_STATUS"
+              echo "  - Mergeable: $MERGEABLE"
+              echo "  - Merge state: $MERGE_STATE"
+              
+              # If all checks passed and PR is mergeable
+              if [[ "$CHECKS_STATUS" -eq 0 && "$MERGEABLE" == "MERGEABLE" ]]; then
+                echo "✅ All checks passed! Merging PR..."
+                gh pr merge "$PR_URL" --${{ inputs.merge-method }}
+                echo "🎉 PR successfully merged!"
+                exit 0
+              fi
+              
+              # If PR is in a failed state
+              if [[ "$MERGE_STATE" == "BLOCKED" || "$MERGEABLE" == "CONFLICTING" ]]; then
+                echo "❌ PR cannot be merged due to conflicts or failed checks"
+                exit 1
+              fi
+              
+              # Wait before next attempt
+              if [[ $i -lt $MAX_ATTEMPTS ]]; then
+                echo "⏳ Waiting ${SLEEP_TIME}s before next check..."
+                sleep $SLEEP_TIME
+              fi
+            done
+            
+            echo "⏱️ Timeout: CI checks did not complete within 60 minutes"
+            exit 1
+          else
+            # Use GitHub's auto-merge feature
+            echo "🔄 Enabling auto-merge..."
+            gh pr merge --auto --${{ inputs.merge-method }} "$PR_URL"
+            echo "ℹ️ Auto-merge enabled. The PR will be merged when all requirements are met."
+          fi
+        fi
