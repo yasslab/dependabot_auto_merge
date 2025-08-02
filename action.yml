@@ -18,8 +18,8 @@ inputs:
     description: 'Comma-separated list of Ruby gems to exclude from auto-merge'
     required: false
     default: 'rails,jekyll'
-  wait-for-checks:
-    description: 'true: Wait for CI checks internally (no branch protection needed). false: Use GitHub auto-merge (requires branch protection rules)'
+  wait-for-ci:
+    description: 'true: Wait for CI to pass before merging. false: Use GitHub auto-merge'
     required: false
     default: 'true'
 
@@ -76,16 +76,16 @@ runs:
         echo "  - Update type: $UPDATE_TYPE"
         echo "  - Dependency: $DEPENDENCY_NAMES"
         echo "  - Should merge: $SHOULD_MERGE"
-        echo "  - Wait for checks: ${{ inputs.wait-for-checks }}"
+        echo "  - Wait for CI: ${{ inputs.wait-for-ci }}"
         
         # Execute merge if conditions are met
         if [[ "$SHOULD_MERGE" == "true" ]]; then
           echo "✅ Approving PR..."
           gh pr review --approve "$PR_URL"
           
-          # Check if we should wait for checks or use auto-merge
-          if [[ "${{ inputs.wait-for-checks }}" == "true" ]]; then
-            echo "⏳ Waiting for CI checks to pass before merging..."
+          # Check if we should wait for CI or use auto-merge
+          if [[ "${{ inputs.wait-for-ci }}" == "true" ]]; then
+            echo "⏳ Waiting for CI to pass before merging..."
             
             # Wait up to 60 minutes for checks to complete
             MAX_ATTEMPTS=120

@@ -28,7 +28,6 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-
 ### 必要な設定
 
 - Settings → General → "Allow auto-merge" を有効化
@@ -40,7 +39,7 @@ jobs:
 | `merge-level`       | `all`          | 自動マージする最大レベル (`patch`, `minor`, `all`) |
 | `merge-method`      | `squash`       | マージ方法 (`merge`, `squash`, `rebase`) |
 | `exclude-gems`      | `rails,jekyll` | 除外するRuby gem（カンマ区切り）         |
-| `wait-for-checks`   | `true`         | CIが通るまで待機してマージ（最大60分）   |
+| `wait-for-ci`       | `true`         | CIが通るまで待機してマージ（最大60分）   |
 
 -----
 
