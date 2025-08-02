@@ -2,7 +2,7 @@
 
 YassLab チーム用の Dependabot カスタムアクションです。
 
-[» デフォルト設定を見る](https://github.com/yasslab/dependabot_auto_merge/blob/main/.github/workflows/dependabot.yml)
+[» デフォルト設定を見る](https://github.com/yasslab/dependabot_auto_merge/blob/main/action.yml)
 
 ## Example Usage
 
