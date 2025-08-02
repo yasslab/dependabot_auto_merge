@@ -9,7 +9,7 @@ inputs:
   auto-merge-level:
     description: 'Maximum semver level to auto-merge (patch, minor, or all)'
     required: false
-    default: 'minor'
+    default: 'all'
   merge-method:
     description: 'Merge method (merge, squash, or rebase)'
     required: false
