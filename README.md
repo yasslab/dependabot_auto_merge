@@ -14,8 +14,6 @@ YassLab チーム用の Dependabot カスタムアクションです。
 name: Auto-merge Dependabot PRs
 on:
   pull_request:
-    branches:
-      - 'dependabot/**'
   # Allows you to run this workflow manually from the Actions tab
   # https://docs.github.com/en/actions/managing-workflow-runs/manually-running-a-workflow
   workflow_dispatch:
