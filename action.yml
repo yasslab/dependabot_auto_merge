@@ -40,7 +40,7 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
-        PR_URL: ${{ github.event.pull_request.html_url }}
+        PR_URL:   ${{ github.event.pull_request.html_url }}
       run: |
         # Check if gem is excluded
         DEPENDENCY_NAMES="${{ steps.metadata.outputs.dependency-names }}"
@@ -49,7 +49,8 @@ runs:
         if [ -n "$EXCLUDE_GEMS" ]; then
           IFS=',' read -ra EXCLUDED <<< "$EXCLUDE_GEMS"
           for gem in "${EXCLUDED[@]}"; do
-            if [[ "$DEPENDENCY_NAMES" == *"$gem"* ]]; then
+            # Exact match check using comma boundaries
+            if [[ ",$DEPENDENCY_NAMES," == *",$gem,"* ]]; then
               echo "💎 Gem $gem is excluded from auto-merge"
               exit 0
             fi
@@ -101,7 +102,7 @@ runs:
               
               # Check if all checks have passed
               CHECKS_STATUS=$(echo "$PR_STATUS" | jq -r '.checks[] | select(.status != "COMPLETED" or .conclusion != "SUCCESS") | .name' | wc -l)
-              MERGEABLE=$(echo "$PR_STATUS" | jq -r '.mergeable')
+              MERGEABLE=$(echo   "$PR_STATUS" | jq -r '.mergeable')
               MERGE_STATE=$(echo "$PR_STATUS" | jq -r '.state')
               
               echo "📊 Status check: attempt $i/$MAX_ATTEMPTS"

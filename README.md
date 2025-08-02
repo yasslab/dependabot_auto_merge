@@ -15,7 +15,7 @@ name: Auto-merge Dependabot PRs
 on: pull_request
 
 permissions:
-  contents: write
+  contents:      write
   pull-requests: write
 
 jobs:

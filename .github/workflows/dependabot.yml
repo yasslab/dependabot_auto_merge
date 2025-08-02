@@ -18,5 +18,3 @@ jobs:
       - uses: ./
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          # dependabot/fetch-metadataのメジャーアップデートは手動で確認
-          exclude-packages: 'dependabot/fetch-metadata'
