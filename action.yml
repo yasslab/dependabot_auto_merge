@@ -14,18 +14,18 @@ inputs:
     description: 'Merge method (merge, squash, or rebase)'
     required: false
     default: 'squash'
-  exclude-packages:
-    description: 'Comma-separated list of packages to exclude from auto-merge'
+  exclude-gems:
+    description: 'Comma-separated list of Ruby gems to exclude from auto-merge'
     required: false
-    default: ''
+    default: 'rails,jekyll'
   dry-run:
     description: 'If true, only log what would be done without actually merging'
     required: false
     default: 'false'
   wait-for-checks:
-    description: 'Wait for CI checks to pass before merging (true to wait, false to use auto-merge)'
+    description: 'true: Wait for CI checks internally (no branch protection needed). false: Use GitHub auto-merge (requires branch protection rules)'
     required: false
-    default: 'false'
+    default: 'true'
 
 runs:
   using: "composite"
@@ -42,15 +42,15 @@ runs:
         GH_TOKEN: ${{ inputs.github-token }}
         PR_URL: ${{ github.event.pull_request.html_url }}
       run: |
-        # Check if package is excluded
+        # Check if gem is excluded
         DEPENDENCY_NAMES="${{ steps.metadata.outputs.dependency-names }}"
-        EXCLUDE_PACKAGES="${{ inputs.exclude-packages }}"
+        EXCLUDE_GEMS="${{ inputs.exclude-gems }}"
         
-        if [ -n "$EXCLUDE_PACKAGES" ]; then
-          IFS=',' read -ra EXCLUDED <<< "$EXCLUDE_PACKAGES"
-          for pkg in "${EXCLUDED[@]}"; do
-            if [[ "$DEPENDENCY_NAMES" == *"$pkg"* ]]; then
-              echo "📦 Package $pkg is excluded from auto-merge"
+        if [ -n "$EXCLUDE_GEMS" ]; then
+          IFS=',' read -ra EXCLUDED <<< "$EXCLUDE_GEMS"
+          for gem in "${EXCLUDED[@]}"; do
+            if [[ "$DEPENDENCY_NAMES" == *"$gem"* ]]; then
+              echo "💎 Gem $gem is excluded from auto-merge"
               exit 0
             fi
           done

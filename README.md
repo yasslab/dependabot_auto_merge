@@ -2,7 +2,7 @@
 
 YassLab チーム用の Dependabot カスタムアクションです。
 
-[» デフォルト設定を見る](https://github.com/yasslab/dependabot_auto_merge/blob/main/dependabot.yml)
+[» デフォルト設定を見る](https://github.com/yasslab/dependabot_auto_merge/blob/main/.github/workflows/dependabot.yml)
 
 ## Example Usage
 
@@ -28,21 +28,20 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-これでpatchとminorアップデートが自動的にマージされます。
 
 ### 必要な設定
 
-リポジトリの Settings → General → "Allow auto-merge" を有効化
+- Settings → General → "Allow auto-merge" を有効化
 
 ### 使用できるオプション
 
-|     パラメータ      | デフォルト |     説明     |
-|---------------------|------------|--------------|
-| `auto-merge-level`  | `minor`    | 自動マージする最大レベル (`patch`, `minor`, `all`) |
-| `merge-method`      | `squash`   | マージ方法 (`merge`, `squash`, `rebase`) |
-| `exclude-packages`  | なし       | 除外するパッケージ（カンマ区切り） |
-| `dry-run`           | `false`    | テスト実行（実際にはマージしない） |
-| `wait-for-checks`   | `false`    | CIが通るまで待機してマージ（最大60分） |
+|     パラメータ      |   デフォルト   |     説明     |
+|---------------------|----------------|--------------|
+| `auto-merge-level`  | `minor`        | 自動マージする最大レベル (`patch`, `minor`, `all`) |
+| `merge-method`      | `squash`       | マージ方法 (`merge`, `squash`, `rebase`) |
+| `exclude-gems`      | `rails,jekyll` | 除外するRuby gem（カンマ区切り）         |
+| `dry-run`           | `false`        | テスト実行（実際にはマージしない）       |
+| `wait-for-checks`   | `true`         | CIが通るまで待機してマージ（最大60分）   |
 
 -----
 
