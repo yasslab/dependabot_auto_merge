@@ -37,10 +37,9 @@ jobs:
 
 |     パラメータ      |   デフォルト   |     説明     |
 |---------------------|----------------|--------------|
-| `auto-merge-level`  | `minor`        | 自動マージする最大レベル (`patch`, `minor`, `all`) |
+| `merge-level`       | `all`          | 自動マージする最大レベル (`patch`, `minor`, `all`) |
 | `merge-method`      | `squash`       | マージ方法 (`merge`, `squash`, `rebase`) |
 | `exclude-gems`      | `rails,jekyll` | 除外するRuby gem（カンマ区切り）         |
-| `dry-run`           | `false`        | テスト実行（実際にはマージしない）       |
 | `wait-for-checks`   | `true`         | CIが通るまで待機してマージ（最大60分）   |
 
 -----

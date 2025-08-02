@@ -6,7 +6,7 @@ inputs:
   github-token:
     description: 'GitHub token with PR write permissions'
     required: true
-  auto-merge-level:
+  merge-level:
     description: 'Maximum semver level to auto-merge (patch, minor, or all)'
     required: false
     default: 'all'
@@ -18,10 +18,6 @@ inputs:
     description: 'Comma-separated list of Ruby gems to exclude from auto-merge'
     required: false
     default: 'rails,jekyll'
-  dry-run:
-    description: 'If true, only log what would be done without actually merging'
-    required: false
-    default: 'false'
   wait-for-checks:
     description: 'true: Wait for CI checks internally (no branch protection needed). false: Use GitHub auto-merge (requires branch protection rules)'
     required: false
@@ -59,10 +55,10 @@ runs:
         
         # Check if should auto-merge based on update type
         UPDATE_TYPE="${{ steps.metadata.outputs.update-type }}"
-        AUTO_MERGE_LEVEL="${{ inputs.auto-merge-level }}"
+        MERGE_LEVEL="${{ inputs.merge-level }}"
         SHOULD_MERGE="false"
         
-        case "$AUTO_MERGE_LEVEL" in
+        case "$MERGE_LEVEL" in
           "patch")
             [[ "$UPDATE_TYPE" == "version-update:semver-patch" ]] && SHOULD_MERGE="true"
             ;;
@@ -80,11 +76,10 @@ runs:
         echo "  - Update type: $UPDATE_TYPE"
         echo "  - Dependency: $DEPENDENCY_NAMES"
         echo "  - Should merge: $SHOULD_MERGE"
-        echo "  - Dry run: ${{ inputs.dry-run }}"
         echo "  - Wait for checks: ${{ inputs.wait-for-checks }}"
         
         # Execute merge if conditions are met
-        if [[ "$SHOULD_MERGE" == "true" && "${{ inputs.dry-run }}" != "true" ]]; then
+        if [[ "$SHOULD_MERGE" == "true" ]]; then
           echo "✅ Approving PR..."
           gh pr review --approve "$PR_URL"
           
