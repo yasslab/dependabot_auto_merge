@@ -96,8 +96,10 @@ runs:
               PR_STATUS=$(gh pr view "$PR_URL" --json statusCheckRollup,mergeable,mergeStateStatus --jq '{checks: .statusCheckRollup, mergeable: .mergeable, state: .mergeStateStatus}')
               
               # Check if all checks have passed
-              CHECKS_PENDING=$(echo "$PR_STATUS" | jq -r '[.checks[] | select(.status != "COMPLETED")] | length')
-              CHECKS_FAILED=$(echo "$PR_STATUS" | jq -r '[.checks[] | select(.status == "COMPLETED" and .conclusion != "SUCCESS")] | length')
+              # Count pending checks (exclude "dependabot" check which is this action itself)
+              CHECKS_PENDING=$(echo "$PR_STATUS" | jq -r '[.checks[] | select(.status != "COMPLETED" and .name != "dependabot")] | length')
+              # Count failed checks (SKIPPED is considered OK)
+              CHECKS_FAILED=$(echo "$PR_STATUS" | jq -r '[.checks[] | select(.status == "COMPLETED" and .conclusion != "SUCCESS" and .conclusion != "SKIPPED")] | length')
               CHECKS_TOTAL=$((CHECKS_PENDING + CHECKS_FAILED))
               MERGEABLE=$(echo "$PR_STATUS" | jq -r '.mergeable')
               MERGE_STATE=$(echo "$PR_STATUS" | jq -r '.state')
@@ -112,7 +114,14 @@ runs:
               # Debug: Show check details on first few attempts
               if [[ $i -le 3 ]]; then
                 echo "  - Check details:"
-                echo "$PR_STATUS" | jq -r '.checks[] | "    - \(.name): \(.status) (\(.conclusion // "pending"))"'
+                echo "$PR_STATUS" | jq -r '.checks[] | 
+                  if .name == "dependabot" then
+                    "    - \(.name): \(.status) (\(.conclusion // "pending")) [IGNORED: self]"
+                  elif .status == "COMPLETED" and .conclusion == "SKIPPED" then
+                    "    - \(.name): \(.status) (\(.conclusion)) [IGNORED: skipped]"
+                  else
+                    "    - \(.name): \(.status) (\(.conclusion // "pending"))"
+                  end'
               fi
               
               # If all checks passed and PR is mergeable
