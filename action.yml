@@ -104,15 +104,12 @@ runs:
               MERGEABLE=$(echo "$PR_STATUS" | jq -r '.mergeable')
               MERGE_STATE=$(echo "$PR_STATUS" | jq -r '.state')
               
-              echo "📊 Status check: attempt $i/$MAX_ATTEMPTS"
-              echo "  - Pending checks: $CHECKS_PENDING"
-              echo "  - Failed checks: $CHECKS_FAILED"
-              echo "  - Total non-success: $CHECKS_TOTAL"
-              echo "  - Mergeable: $MERGEABLE"
-              echo "  - Merge state: $MERGE_STATE"
+              # Simple status output
+              echo "📊 Attempt $i/$MAX_ATTEMPTS: Pending=$CHECKS_PENDING, Failed=$CHECKS_FAILED, State=$MERGE_STATE"
               
-              # Debug: Show check details on first few attempts
-              if [[ $i -le 3 ]]; then
+              # Detailed debug info only if ACTIONS_STEP_DEBUG is set
+              if [[ "$ACTIONS_STEP_DEBUG" == "true" || $i -eq 1 ]]; then
+                echo "  - Mergeable: $MERGEABLE"
                 echo "  - Check details:"
                 echo "$PR_STATUS" | jq -r '.checks[] | 
                   if .name == "dependabot" then
