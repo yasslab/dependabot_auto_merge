@@ -1,10 +1,14 @@
 # Dependabot Auto Merge for YassLab team
 
-[YassLab](https://github.com/yasslab) チームで使用している Dependabot 用アクションです。
+YassLab チーム用の Dependabot カスタムアクションです。
 
-## 使い方
+[» デフォルト設定を見る](https://github.com/yasslab/dependabot_auto_merge/blob/main/dependabot.yml)
 
-`.github/workflows/dependabot.yml` を作成:
+## Example Usage
+
+```bash
+.github/workflows/dependabot.yml
+```
 
 ```yaml
 name: Auto-merge Dependabot PRs
@@ -40,6 +44,6 @@ jobs:
 | `dry-run`           | `false`    | テスト実行（実際にはマージしない） |
 | `wait-for-checks`   | `false`    | CIが通るまで待機してマージ（最大60分） |
 
-## ライセンス
+-----
 
-MIT License
+Copyright © [YassLab](https://github.com/yasslab).
