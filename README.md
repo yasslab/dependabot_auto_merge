@@ -2,7 +2,13 @@
 
 YassLab チーム用の Dependabot カスタムアクションです。
 
-[» デフォルト設定を見る](https://github.com/yasslab/dependabot_auto_merge/blob/main/action.yml)
+[&raquo; デフォルト設定を見る](https://github.com/yasslab/dependabot_auto_merge/blob/main/action.yml)   
+[&raquo; レビュー利用例を見る](https://github.com/yasslab/yasslab.jp/blob/main/.github/workflows/dependabot.yml)   
+[&raquo; 関連リポジトリを見る](https://github.com/yasslab/claude_review_action)
+
+<br>
+
+
 
 ## Example Usage
 
