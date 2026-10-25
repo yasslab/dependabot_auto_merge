@@ -28,36 +28,50 @@ runs:
   steps:
     - name: Fetch Dependabot metadata
       id: metadata
-      uses: dependabot/fetch-metadata@v2
+      # 書き込みのできる token を渡す action なので、tag ではなく SHA で固定する（tag は後から付け替えられる）
+      uses: dependabot/fetch-metadata@21025c705c08248db411dc16f3619e6b5f9ea21a # v2.5.0
       with:
         github-token: ${{ inputs.github-token }}
 
     - name: Check and auto-merge
       shell: bash
+      # ${{ }} を run: に直接埋め込まず、env: 経由で渡す（コマンドの注入を避ける）
       env:
         GH_TOKEN: ${{ inputs.github-token }}
         PR_URL:   ${{ github.event.pull_request.html_url }}
+        DEPENDENCY_NAMES: ${{ steps.metadata.outputs.dependency-names }}
+        UPDATE_TYPE:      ${{ steps.metadata.outputs.update-type }}
+        EXCLUDE_GEMS:     ${{ inputs.exclude-gems }}
+        MERGE_LEVEL:      ${{ inputs.merge-level }}
+        MERGE_METHOD:     ${{ inputs.merge-method }}
+        WAIT_FOR_CI:      ${{ inputs.wait-for-ci }}
       run: |
+        case "$MERGE_METHOD" in
+          merge|squash|rebase) ;;
+          *) echo "::error::merge-method は merge・squash・rebase のどれかにしてください（$MERGE_METHOD）"; exit 1 ;;
+        esac
+
         # Check if gem is excluded
-        DEPENDENCY_NAMES="${{ steps.metadata.outputs.dependency-names }}"
-        EXCLUDE_GEMS="${{ inputs.exclude-gems }}"
-        
+        # dependency-names は ", "（カンマと空白）で区切られる（例: "jekyll-feed, jekyll"）。
+        # 前後の空白を除いて 1 つずつ比べる（空白を残すと、2 番目以降の名前が除外に当たらない）
         if [ -n "$EXCLUDE_GEMS" ]; then
           IFS=',' read -ra EXCLUDED <<< "$EXCLUDE_GEMS"
+          IFS=',' read -ra NAMES    <<< "$DEPENDENCY_NAMES"
           for gem in "${EXCLUDED[@]}"; do
-            # Exact match check using comma boundaries
-            if [[ ",$DEPENDENCY_NAMES," == *",$gem,"* ]]; then
-              echo "💎 Gem $gem is excluded from auto-merge"
-              exit 0
-            fi
+            gem="${gem//[[:space:]]/}"
+            [ -n "$gem" ] || continue
+            for name in "${NAMES[@]}"; do
+              if [[ "${name//[[:space:]]/}" == "$gem" ]]; then
+                echo "💎 Gem $gem is excluded from auto-merge"
+                exit 0
+              fi
+            done
           done
         fi
-        
+
         # Check if should auto-merge based on update type
-        UPDATE_TYPE="${{ steps.metadata.outputs.update-type }}"
-        MERGE_LEVEL="${{ inputs.merge-level }}"
         SHOULD_MERGE="false"
-        
+
         case "$MERGE_LEVEL" in
           "patch")
             [[ "$UPDATE_TYPE" == "version-update:semver-patch" ]] && SHOULD_MERGE="true"
@@ -70,31 +84,31 @@ runs:
             SHOULD_MERGE="true"
             ;;
         esac
-        
+
         # Log decision
         echo "📊 Auto-merge decision:"
         echo "  - Update type: $UPDATE_TYPE"
         echo "  - Dependency: $DEPENDENCY_NAMES"
         echo "  - Should merge: $SHOULD_MERGE"
-        echo "  - Wait for CI: ${{ inputs.wait-for-ci }}"
-        
+        echo "  - Wait for CI: $WAIT_FOR_CI"
+
         # Execute merge if conditions are met
         if [[ "$SHOULD_MERGE" == "true" ]]; then
           echo "✅ Approving PR..."
           gh pr review --approve "$PR_URL"
-          
+
           # Check if we should wait for CI or use auto-merge
-          if [[ "${{ inputs.wait-for-ci }}" == "true" ]]; then
+          if [[ "$WAIT_FOR_CI" == "true" ]]; then
             echo "⏳ Waiting for CI to pass before merging..."
-            
+
             # Wait up to 60 minutes for checks to complete
             MAX_ATTEMPTS=120
             SLEEP_TIME=30
-            
+
             for i in $(seq 1 $MAX_ATTEMPTS); do
               # Get PR status
               PR_STATUS=$(gh pr view "$PR_URL" --json statusCheckRollup,mergeable,mergeStateStatus --jq '{checks: .statusCheckRollup, mergeable: .mergeable, state: .mergeStateStatus}')
-              
+
               # Check if all checks have passed
               # Count pending checks (exclude "dependabot" check which is this action itself)
               CHECKS_PENDING=$(echo "$PR_STATUS" | jq -r '[.checks[] | select(.status != "COMPLETED" and .name != "dependabot")] | length')
@@ -103,15 +117,15 @@ runs:
               CHECKS_TOTAL=$((CHECKS_PENDING + CHECKS_FAILED))
               MERGEABLE=$(echo "$PR_STATUS" | jq -r '.mergeable')
               MERGE_STATE=$(echo "$PR_STATUS" | jq -r '.state')
-              
+
               # Simple status output
               echo "📊 Attempt $i/$MAX_ATTEMPTS: Pending=$CHECKS_PENDING, Failed=$CHECKS_FAILED, State=$MERGE_STATE"
-              
+
               # Detailed debug info only if ACTIONS_STEP_DEBUG is set
               if [[ "$ACTIONS_STEP_DEBUG" == "true" || $i -eq 1 ]]; then
                 echo "  - Mergeable: $MERGEABLE"
                 echo "  - Check details:"
-                echo "$PR_STATUS" | jq -r '.checks[] | 
+                echo "$PR_STATUS" | jq -r '.checks[] |
                   if .name == "dependabot" then
                     "    - \(.name): \(.status) (\(.conclusion // "pending")) [IGNORED: self]"
                   elif .status == "COMPLETED" and .conclusion == "SKIPPED" then
@@ -120,34 +134,34 @@ runs:
                     "    - \(.name): \(.status) (\(.conclusion // "pending"))"
                   end'
               fi
-              
+
               # If all checks passed and PR is mergeable
               if [[ "$CHECKS_TOTAL" -eq 0 && "$MERGEABLE" == "MERGEABLE" ]]; then
                 echo "✅ All checks passed! Merging PR..."
-                gh pr merge "$PR_URL" --${{ inputs.merge-method }}
+                gh pr merge "$PR_URL" "--$MERGE_METHOD"
                 echo "🎉 PR successfully merged!"
                 exit 0
               fi
-              
+
               # If PR is in a failed state
               if [[ "$MERGE_STATE" == "BLOCKED" || "$MERGEABLE" == "CONFLICTING" ]]; then
                 echo "❌ PR cannot be merged due to conflicts or failed checks"
                 exit 1
               fi
-              
+
               # Wait before next attempt
               if [[ $i -lt $MAX_ATTEMPTS ]]; then
                 echo "⏳ Waiting ${SLEEP_TIME}s before next check..."
                 sleep $SLEEP_TIME
               fi
             done
-            
+
             echo "⏱️ Timeout: CI checks did not complete within 60 minutes"
             exit 1
           else
             # Use GitHub's auto-merge feature
             echo "🔄 Enabling auto-merge..."
-            gh pr merge --auto --${{ inputs.merge-method }} "$PR_URL"
+            gh pr merge --auto "--$MERGE_METHOD" "$PR_URL"
             echo "ℹ️ Auto-merge enabled. The PR will be merged when all requirements are met."
           fi
         fi
