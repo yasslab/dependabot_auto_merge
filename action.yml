@@ -95,7 +95,13 @@ runs:
         # Execute merge if conditions are met
         if [[ "$SHOULD_MERGE" == "true" ]]; then
           echo "✅ Approving PR..."
-          gh pr review --approve "$PR_URL"
+          if ! APPROVE_OUT=$(gh pr review --approve "$PR_URL" 2>&1); then
+            echo "$APPROVE_OUT"
+            if [[ "$APPROVE_OUT" == *"not permitted to approve pull requests"* ]]; then
+              echo "::error::GitHub Actions に PR の承認が許可されていません。Settings → Actions → General → Workflow permissions の \"Allow GitHub Actions to create and approve pull requests\" を有効にしてください"
+            fi
+            exit 1
+          fi
 
           # Check if we should wait for CI or use auto-merge
           if [[ "$WAIT_FOR_CI" == "true" ]]; then
@@ -104,10 +110,19 @@ runs:
             # Wait up to 60 minutes for checks to complete
             MAX_ATTEMPTS=120
             SLEEP_TIME=30
+            PR_VIEW_ERR=$(mktemp)
 
             for i in $(seq 1 $MAX_ATTEMPTS); do
               # Get PR status
-              PR_STATUS=$(gh pr view "$PR_URL" --json statusCheckRollup,mergeable,mergeStateStatus --jq '{checks: .statusCheckRollup, mergeable: .mergeable, state: .mergeStateStatus}')
+              # statusCheckRollup（Check Run と commit status）は、private リポジトリでは
+              # token に checks: read と statuses: read が無いと読めない（public は権限が無くても読める）
+              if ! PR_STATUS=$(gh pr view "$PR_URL" --json statusCheckRollup,mergeable,mergeStateStatus --jq '{checks: .statusCheckRollup, mergeable: .mergeable, state: .mergeStateStatus}' 2>"$PR_VIEW_ERR"); then
+                cat "$PR_VIEW_ERR"
+                if grep -q 'Resource not accessible by integration' "$PR_VIEW_ERR"; then
+                  echo "::error::CI の結果を読む権限がありません。呼び出す workflow の permissions に checks: read と statuses: read を足してください（private リポジトリで必要）"
+                fi
+                exit 1
+              fi
 
               # Check if all checks have passed
               # Count pending checks (exclude "dependabot" check which is this action itself)
