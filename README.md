@@ -27,6 +27,8 @@ on:
 permissions:
   contents:      write
   pull-requests: write
+  checks:        read # CI の結果を読む（private リポジトリで必要）
+  statuses:      read # 同上
 
 jobs:
   dependabot:
@@ -41,6 +43,8 @@ jobs:
 ### 必要な設定
 
 - Settings → General → "Allow auto-merge" を有効化
+- Settings → Actions → General → Workflow permissions → "Allow GitHub Actions to create and approve pull requests" を有効化（無いと PR の承認で止まる）
+- workflow の `permissions` に `checks: read` と `statuses: read` を書く（`wait-for-ci: true` の時に CI の結果を読む。private リポジトリでは無いと `Resource not accessible by integration` で止まる）
 
 ### 使用できるオプション
 
