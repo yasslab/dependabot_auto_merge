@@ -15,8 +15,11 @@ jobs:
     steps:
       # リポジトリをチェックアウト（ローカルアクションを使用するため）
       - uses: actions/checkout@v4
-      
+
       # このリポジトリのアクションを直接使用
       - uses: ./
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          # 書き込みのできる token を渡す action なので、SHA を上げる PR は自動でマージせず、人が action の差分を読んでからマージする
+          # （この action を @main で使う他のリポジトリにも、そのまま届く）
+          exclude-gems: dependabot/fetch-metadata
