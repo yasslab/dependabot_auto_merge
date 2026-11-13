@@ -127,8 +127,8 @@ runs:
               # Check if all checks have passed
               # Count pending checks (exclude "dependabot" check which is this action itself)
               CHECKS_PENDING=$(echo "$PR_STATUS" | jq -r '[.checks[] | select(.status != "COMPLETED" and .name != "dependabot")] | length')
-              # Count failed checks (SKIPPED is considered OK)
-              CHECKS_FAILED=$(echo "$PR_STATUS" | jq -r '[.checks[] | select(.status == "COMPLETED" and .conclusion != "SUCCESS" and .conclusion != "SKIPPED")] | length')
+              # Count failed checks (SKIPPED and NEUTRAL are considered OK, as in GitHub's required status checks)
+              CHECKS_FAILED=$(echo "$PR_STATUS" | jq -r '[.checks[] | select(.status == "COMPLETED" and .conclusion != "SUCCESS" and .conclusion != "SKIPPED" and .conclusion != "NEUTRAL")] | length')
               CHECKS_TOTAL=$((CHECKS_PENDING + CHECKS_FAILED))
               MERGEABLE=$(echo "$PR_STATUS" | jq -r '.mergeable')
               MERGE_STATE=$(echo "$PR_STATUS" | jq -r '.state')
@@ -143,8 +143,8 @@ runs:
                 echo "$PR_STATUS" | jq -r '.checks[] |
                   if .name == "dependabot" then
                     "    - \(.name): \(.status) (\(.conclusion // "pending")) [IGNORED: self]"
-                  elif .status == "COMPLETED" and .conclusion == "SKIPPED" then
-                    "    - \(.name): \(.status) (\(.conclusion)) [IGNORED: skipped]"
+                  elif .status == "COMPLETED" and (.conclusion == "SKIPPED" or .conclusion == "NEUTRAL") then
+                    "    - \(.name): \(.status) (\(.conclusion)) [IGNORED: \(.conclusion | ascii_downcase)]"
                   else
                     "    - \(.name): \(.status) (\(.conclusion // "pending"))"
                   end'
