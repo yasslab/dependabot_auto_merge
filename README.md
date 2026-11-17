@@ -46,6 +46,11 @@ jobs:
 - Settings → Actions → General → Workflow permissions → "Allow GitHub Actions to create and approve pull requests" を有効化（無いと PR の承認で止まる）
 - workflow の `permissions` に `checks: read` と `statuses: read` を書く（`wait-for-ci: true` の時に CI の結果を読む。private リポジトリでは無いと `Resource not accessible by integration` で止まる）
 
+### 自動マージしない PR
+
+- `exclude-gems` に挙げた依存を上げる PR
+- `.github/workflows/` の中を変える PR（setup-ruby などの action を上げる PR が `actions.lock` や workflow を書き換える時）。`GITHUB_TOKEN` には workflow を書き換える権限を渡せず、マージを拒まれるため。run は緑のまま notice を残すので、差分を読んで手でマージする
+
 ### 使用できるオプション
 
 |     パラメータ      |   デフォルト   |     説明     |

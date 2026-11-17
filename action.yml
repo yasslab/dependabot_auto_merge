@@ -69,6 +69,15 @@ runs:
           done
         fi
 
+        # .github/workflows/ の中を変える PR は、GITHUB_TOKEN ではマージできない（GitHub が workflows の権限を求めて拒む）。
+        # setup-ruby などを上げる github_actions の PR は actions.lock や ci.yml を書き換えるので、承認とマージの前に止め、
+        # 人が差分を読んでマージする。CI を 60 分待った末に赤く落ちるより、ここで緑のまま理由を残す
+        CHANGED_FILES=$(gh pr diff "$PR_URL" --name-only)
+        if grep -q '^\.github/workflows/' <<< "$CHANGED_FILES"; then
+          echo "::notice::.github/workflows/ を変える PR は GITHUB_TOKEN ではマージできないので、自動マージしません。差分を読んで手でマージしてください"
+          exit 0
+        fi
+
         # Check if should auto-merge based on update type
         SHOULD_MERGE="false"
 
