@@ -49,7 +49,7 @@ jobs:
 ### 自動マージしない PR
 
 - `exclude-gems` に挙げた依存を上げる PR
-- `.github/workflows/` の中を変える PR（setup-ruby などの action を上げる PR が `actions.lock` や workflow を書き換える時）。`GITHUB_TOKEN` には workflow を書き換える権限を渡せず、マージを拒まれるため。run は緑のまま notice を残すので、差分を読んで手でマージする
+- `.github/workflows/` の中を変える PR（setup-ruby などの action を上げる PR が `actions.lock` や workflow を書き換える時）。`GITHUB_TOKEN` には workflow を書き換える権限を渡せず、マージを拒まれるため。run は緑のまま notice を残すので、差分を読んで手でマージする。緑の run は開かれないので、open のまま残る Dependabot の PR（ラベル `dependencies`）を定期的に見て拾う（溜まると、同じ種類の新しい版上げの PR が出なくなる）
 
 ### 使用できるオプション
 
